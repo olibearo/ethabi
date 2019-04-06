@@ -209,26 +209,30 @@ fn decode_param(
             Ok(result)
         }
         ParamType::Tuple(ref t) => {
-            let tuple_len_offset = if param.is_dynamic() {
-                let tuple_offset_slice = try!(peek(slices, offset));
-                (as_u32(tuple_offset_slice)? / 32) as usize
+			let is_dynamic = param.is_dynamic();
+
+			// The first element in a dynamic Tuple is an offset to the Tuple's data
+			// For a static Tuple the data begins right away
+			let (slices, mut new_offset) = if is_dynamic {
+				(&slices[(as_u32(peek(slices, offset)?)? / 32) as usize..],0)
             } else {
-                offset
+				(slices,offset)
             };
 
             let len = t.len();
             let mut tokens = Vec::with_capacity(len);
-            let tuple_slices = &slices[tuple_len_offset..];
-            let mut new_offset = 0;
             for i in 0..len {
-                let res = decode_param(&t[i], &tuple_slices, new_offset)?;
-                new_offset = new_offset + 1;
+                let res = decode_param(&t[i], &slices, new_offset)?;
+                new_offset = res.new_offset;
                 tokens.push(res.token);
             }
 
-            let result = DecodeResult {
+			// The returned new_offset depends on whether the Tuple is dynamic
+			// dynamic Tuple -> follows the prefixed Tuple data offset element
+			// static Tuple  -> follows the last data element
+			let result = DecodeResult {
                 token: Token::Tuple(tokens),
-                new_offset: new_offset + 1,
+                new_offset: if is_dynamic { offset + 1 } else { new_offset },
             };
 
             Ok(result)
