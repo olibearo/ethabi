@@ -50,7 +50,7 @@ impl Function {
 		decode(&self.output_param_types(), &data)
 	}
 
-  /// Parses the ABI function input to a list of tokens.
+	/// Parses the ABI function input to a list of tokens.
 	pub fn decode_input(&self, data: &[u8]) -> Result<Vec<Token>> {
 		decode(&self.input_param_types(), &data)
 	}
